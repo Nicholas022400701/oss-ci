@@ -1,0 +1,54 @@
+name: OSS branch tests
+run-name: ${{ inputs.repo }} @ ${{ inputs.ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: Repository to check out, as owner/name
+        required: true
+        type: string
+      ref:
+        description: Branch, tag or commit to check out
+        required: true
+        type: string
+      python:
+        description: Python version
+        required: false
+        default: "3.12"
+        type: string
+      setup:
+        description: Shell commands that install the project and its test dependencies
+        required: true
+        type: string
+      test:
+        description: Shell commands that run the tests
+        required: true
+        type: string
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ inputs.python }}
+      - name: Install
+        env:
+          SETUP: ${{ inputs.setup }}
+        run: bash -eo pipefail -c "$SETUP"
+      - name: Show versions
+        run: |
+          python --version
+          python -m pip list 2>/dev/null | grep -i -E "^(jax|jaxlib|numpy|optax|chex|flax|keras|torch|tensorflow|scipy) " || true
+      - name: Test
+        env:
+          TEST: ${{ inputs.test }}
+        run: bash -eo pipefail -c "$TEST"
